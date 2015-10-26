@@ -1,6 +1,6 @@
 {
   "name": "majora",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "A simple deku-based static site builder",
   "dependencies": {
     "babel": "^5.8.23",
