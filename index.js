@@ -10,8 +10,14 @@ import mkdirp from "mkdirp"
 
 // -----------------------------------------------------------------------------
 // Config
-const sitePackage = path.resolve("./package")
-const config = require(sitePackage).majora || {}
+const defaultConfig = {
+  content: "content",
+  build: "build",
+  templates: "templates",
+  markdown: {},
+}
+const pkg = path.resolve("./package")
+const config = Object.assign({}, defaultConfig, require(pkg).majora || {})
 
 for (const flag of ["-w", "--watch"]) {
   config.watch = (process.argv.indexOf(flag) !== -1)
@@ -46,7 +52,7 @@ const context = []
 function convertFileName(fileName) {
   const contentRelativeFileName = path.relative(config.content, fileName)
 
-  return path.resolve(config.output, contentRelativeFileName)
+  return path.resolve(config.build, contentRelativeFileName)
     .replace(/\.md$/, ".html")
     .replace(/\.from\.js$/, "")
 }
@@ -87,7 +93,7 @@ function renderPage(fileName) {
   props.data.template = props.data.template || "Default"
 
   if (!templates[props.data.template]) {
-    const templatePath = path.resolve("templates", props.data.template)
+    const templatePath = path.resolve(config.templates, props.data.template)
     try {
       const template = require(templatePath)
       templates[props.data.template] = template
