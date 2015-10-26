@@ -8,6 +8,11 @@ import fmt from "chalk"
 import gaze from "gaze"
 import mkdirp from "mkdirp"
 
+function cwdResolve(...parts) {
+  const relativePath = path.join(...parts)
+  return path.resolve(process.cwd(), relativePath)
+}
+
 // -----------------------------------------------------------------------------
 // Config
 const defaultConfig = {
@@ -16,7 +21,7 @@ const defaultConfig = {
   templates: "templates",
   markdown: {},
 }
-const pkg = path.resolve("./package")
+const pkg = cwdResolve("./package")
 const config = Object.assign({}, defaultConfig, require(pkg).majora || {})
 
 for (const flag of ["-w", "--watch"]) {
@@ -50,9 +55,9 @@ const warn = (msg) => console.warn(fmt.yellow(msg))
 const context = []
 
 function convertFileName(fileName) {
-  const contentRelativeFileName = path.relative(config.content, fileName)
+  const contentRelativeFileName = cwdResolve(config.content, fileName)
 
-  return path.resolve(config.build, contentRelativeFileName)
+  return cwdResolve(config.build, contentRelativeFileName)
     .replace(/\.md$/, ".html")
     .replace(/\.from\.js$/, "")
 }
@@ -93,7 +98,7 @@ function renderPage(fileName) {
   props.data.template = props.data.template || "Default"
 
   if (!templates[props.data.template]) {
-    const templatePath = path.resolve(config.templates, props.data.template)
+    const templatePath = cwdResolve(config.templates, props.data.template)
     try {
       const template = require(templatePath)
       templates[props.data.template] = template
