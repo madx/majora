@@ -1,1 +1,1 @@
-# Majora
+![Majora](logo.png)
