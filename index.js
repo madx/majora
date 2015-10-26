@@ -103,7 +103,11 @@ function renderPage(fileName) {
       const template = require(templatePath)
       templates[props.data.template] = template
     } catch (e) {
-      throw new Error(`Missing template ${props.data.template}`)
+      if (/Cannot find module/.test(e.message)) {
+        throw new Error(`Missing template ${props.data.template}`)
+      } else {
+        throw e
+      }
     }
   }
 
