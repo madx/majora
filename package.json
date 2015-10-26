@@ -22,7 +22,8 @@
     "majora": "dist/majora.js"
   },
   "scripts": {
-    "build": "mkdir -p dist && babel index.js > dist/majora.js"
+    "build": "mkdir -p dist && babel index.js > dist/majora.js",
+    "postinstall": "npm run build"
   },
   "repository": {
     "type": "git",
