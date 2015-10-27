@@ -8,11 +8,6 @@ import fmt from "chalk"
 import gaze from "gaze"
 import mkdirp from "mkdirp"
 
-function cwdResolve(...parts) {
-  const relativePath = path.join(...parts)
-  return path.resolve(process.cwd(), relativePath)
-}
-
 // -----------------------------------------------------------------------------
 // Config
 const defaultConfig = {
@@ -26,6 +21,17 @@ const config = Object.assign({}, defaultConfig, require(pkg).majora || {})
 
 for (const flag of ["-w", "--watch"]) {
   config.watch = (process.argv.indexOf(flag) !== -1)
+}
+
+//
+// Path manipulation
+function cwdResolve(...parts) {
+  const relativePath = path.join(...parts)
+  return path.resolve(process.cwd(), relativePath)
+}
+
+function cwdRelative(fileName) {
+  return path.relative(process.cwd(), fileName)
 }
 
 // -----------------------------------------------------------------------------
@@ -55,40 +61,43 @@ const warn = (msg) => console.warn(fmt.yellow(msg))
 const context = []
 
 function convertFileName(fileName) {
-  const contentRelativeFileName = cwdResolve(config.content, fileName)
-
-  return cwdResolve(config.build, contentRelativeFileName)
+  return cwdResolve(config.build, fileName)
     .replace(/\.md$/, ".html")
     .replace(/\.from\.js$/, "")
 }
 
 function processFile(fileName) {
-  const outputFileName = convertFileName(fileName)
+  const contentFileName = path.relative(config.content, fileName)
+  const outputFileName = convertFileName(contentFileName)
   const outputDirName = path.dirname(outputFileName)
 
   mkdirp(outputDirName)
 
   if (isMd(fileName)) {
-    log(`> Converting ${path.relative(config.content, fileName)}`)
+    log(`> Converting ${contentFileName}`)
     fs.writeFileSync(outputFileName, renderPage(fileName))
   } else if (isFromJs(fileName)) {
-    log(`> Executing ${path.relative(config.content, fileName)}`)
+    log(`> Executing ${contentFileName}`)
     const scriptOutput = renderScript(fileName)
 
     if (scriptOutput) {
       fs.writeFileSync(outputFileName, scriptOutput)
     }
   } else {
-    log(`> Copying ${path.relative(config.content, fileName)}`)
+    log(`> Copying ${contentFileName}`)
     fs.writeFileSync(outputFileName, fs.readFileSync(fileName))
   }
 }
 
 function removeFile(fileName) {
-  const outputFileName = convertFileName(fileName)
-  warn(`> Unlinking ${outputFileName}`)
-  if (fs.existsSync(outputFileName)) {
-    fs.unlink(outputFileName)
+  const contentFileName = path.relative(config.content, fileName)
+  const fileToRemove = convertFileName(contentFileName)
+
+  if (fs.existsSync(fileToRemove)) {
+    warn(`> Unlinking ${fileToRemove}`)
+    fs.unlink(fileToRemove)
+  } else {
+    error(`> Tried to unlink ${fileToRemove} but file does not exist`)
   }
 }
 
@@ -146,9 +155,12 @@ function isFromJs(fileName) {
 // Start watcher
 const watcher = new gaze.Gaze(`${config.content}/**/*`)
 
-watcher.on("changed", processFile)
+watcher.on("changed", (fileName) => {
+  processFile(cwdRelative(fileName))
+})
 
 watcher.on("added", (fileName) => {
+  fileName = cwdRelative(fileName)
   if (isMd(fileName)) {
     context[fileName] = parsePage(fileName)
   }
@@ -156,6 +168,7 @@ watcher.on("added", (fileName) => {
 })
 
 watcher.on("deleted", (fileName) => {
+  fileName = cwdRelative(fileName)
   delete context[fileName]
   removeFile(fileName)
 })
@@ -166,10 +179,11 @@ watcher.once("ready", () => {
   const watchedDirs = watcher.watched()
   const watchedFiles = Object.keys(watchedDirs)
       .reduce((a, dir) => a.concat(watchedDirs[dir]), [])
+      .map(cwdRelative)
 
   watchedFiles
     .filter(isMd)
-    .forEach(fn => context[fn] = parsePage(fn))
+    .forEach(f => context[f] = parsePage(f))
   watchedFiles.forEach(processFile)
 
   if (!config.watch) {
