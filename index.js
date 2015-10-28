@@ -19,6 +19,11 @@ const defaultConfig = {
 const pkg = cwdResolve("./package")
 const config = Object.assign({}, defaultConfig, require(pkg).majora || {})
 
+const extensionsFile = cwdResolve("./majora.js")
+const extensions = Object.assign({}, {
+  postprocessPage: p => p,
+}, fs.existsSync(extensionsFile) ? require(extensionsFile) : {})
+
 for (const flag of ["-w", "--watch"]) {
   config.watch = (process.argv.indexOf(flag) !== -1)
 }
@@ -120,10 +125,12 @@ function renderPage(fileName) {
     }
   }
 
-  return renderString(deku({
-    type: templates[props.data.template],
-    attributes: props,
-  }))
+  return extensions.postprocessPage(
+    renderString(deku({
+      type: templates[props.data.template],
+      attributes: props,
+    }))
+  )
 }
 
 function renderScript(fileName) {
