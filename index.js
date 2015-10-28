@@ -134,7 +134,7 @@ function renderPage(fileName) {
 }
 
 function renderScript(fileName) {
-  const script = require(fileName)
+  const script = require(cwdResolve(fileName))
 
   return script.render(context, config)
 }
